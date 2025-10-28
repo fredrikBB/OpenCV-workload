@@ -2,6 +2,7 @@
 #include <unistd.h>
 #include <opencv2/opencv.hpp>
 #include <opencv2/aruco.hpp>
+#include <chrono>
 
 #include "camera_parameters.h"
 
@@ -11,20 +12,29 @@ void printHelp() {
               << "  -h                Show this help message\n"
               << "  -f image_path     Path to the input image\n"
               << "  -s                Show image with detected markers and axes\n"
-              << "  -d                Print detected marker ids and pose data\n";
+              << "  -d                Print detected marker ids and pose data\n"
+              << "  -t                Print detection and pose estimation time\n";
 }
 
 int main(int argc, char** argv ) {
+    // Program options
     Mat InputImage;
     bool SHOW_IMAGE = false;
     bool PRINT_DATA = false;
+    bool OUTPUT_TIME = false;
+
+    // Time points for performance measurement
+    // Steady clock is monotonic and not affected by system clock changes
+    // There exists high_resolution_clock, but its steadiness is not guaranteed
+    std::chrono::steady_clock::time_point pre_detection_time, post_detection_time;
+    std::chrono::steady_clock::time_point pre_pose_time, post_pose_time;
 
     /**************************************************************************************/
     /************************************Parse Input***************************************/
     /**************************************************************************************/
 
     int opt;
-    while ((opt = getopt(argc, argv, "hf:sd")) != -1) {
+    while ((opt = getopt(argc, argv, "hf:sdt")) != -1) {
         switch (opt) {
             case 'h':
                 printHelp();
@@ -42,6 +52,9 @@ int main(int argc, char** argv ) {
             case 'd':
                 PRINT_DATA = true;
                 break;
+            case 't':
+                OUTPUT_TIME = true;
+                break;
             default:
                 std::cerr << "Unknown option\n";
                 printHelp();
@@ -53,6 +66,10 @@ int main(int argc, char** argv ) {
     /************************************ArUco Detection***********************************/
     /**************************************************************************************/
 
+    // Start detection timer
+    pre_detection_time = std::chrono::steady_clock::now();
+
+    // Aruco detection variables
     std::vector<int> markerIds;
     std::vector<std::vector<cv::Point2f>> markerCorners, rejectedCandidates;
     cv::Ptr<cv::aruco::DetectorParameters> detectorParams = cv::aruco::DetectorParameters::create();
@@ -60,6 +77,42 @@ int main(int argc, char** argv ) {
 
     // ArUco detection
     cv::aruco::detectMarkers(InputImage, dictionary, markerCorners, markerIds, detectorParams, rejectedCandidates);
+
+    // End detection timer
+    post_detection_time = std::chrono::steady_clock::now();
+
+    /**************************************************************************************/
+    /************************************Pose Estimation***********************************/
+    /**************************************************************************************/
+
+    // Start pose estimation timer
+    pre_pose_time = std::chrono::steady_clock::now();
+
+    // Pose estimation variables
+    float markerLength = 26.41f; // Marker side length in mm
+    Mat cameraMatrix = OnePlus11CameraMatrix;
+    Mat distCoeffs = OnePlus11DistCoeffs;
+    std::vector<Vec3d> rvecs(markerIds.size()); // Rotation vectors
+    std::vector<Vec3d> tvecs(markerIds.size()); // Translation vectors
+
+    // Set coordinate system
+    cv::Mat objPoints(4, 1, CV_32FC3);
+    objPoints.ptr<Vec3f>(0)[0] = Vec3f(-markerLength/2.f, markerLength/2.f, 0);
+    objPoints.ptr<Vec3f>(0)[1] = Vec3f(markerLength/2.f, markerLength/2.f, 0);
+    objPoints.ptr<Vec3f>(0)[2] = Vec3f(markerLength/2.f, -markerLength/2.f, 0);
+    objPoints.ptr<Vec3f>(0)[3] = Vec3f(-markerLength/2.f, -markerLength/2.f, 0);
+    
+    // Estimate pose for each detected marker
+    for (size_t i = 0; i < markerIds.size(); i++) {
+        cv::solvePnP(objPoints, markerCorners.at(i), cameraMatrix, distCoeffs, rvecs[i], tvecs[i]);
+    }
+
+    // End pose estimation timer
+    post_pose_time = std::chrono::steady_clock::now();
+
+    /**************************************************************************************/
+    /************************************Print Results*************************************/
+    /**************************************************************************************/
 
     // Print out detected marker ids sorted
     if (PRINT_DATA) {
@@ -69,28 +122,6 @@ int main(int argc, char** argv ) {
             std::cout << i << " ";
         std::cout << std::endl;
         std::cout << "Number of detected markers: " << markerIds.size() << std::endl;
-    }
-
-    /**************************************************************************************/
-    /************************************Pose Estimation***********************************/
-    /**************************************************************************************/
-
-    float markerLength = 26.41f; // Marker side length in mm
-    Mat cameraMatrix = OnePlus11CameraMatrix;
-    Mat distCoeffs = OnePlus11DistCoeffs;
-    std::vector<Vec3d> rvecs(markerIds.size()); // Rotation vectors
-    std::vector<Vec3d> tvecs(markerIds.size()); // Translation vectors
-
-    // set coordinate system
-    cv::Mat objPoints(4, 1, CV_32FC3);
-    objPoints.ptr<Vec3f>(0)[0] = Vec3f(-markerLength/2.f, markerLength/2.f, 0);
-    objPoints.ptr<Vec3f>(0)[1] = Vec3f(markerLength/2.f, markerLength/2.f, 0);
-    objPoints.ptr<Vec3f>(0)[2] = Vec3f(markerLength/2.f, -markerLength/2.f, 0);
-    objPoints.ptr<Vec3f>(0)[3] = Vec3f(-markerLength/2.f, -markerLength/2.f, 0);
-
-    // Estimate pose for each detected marker
-    for (size_t i = 0; i < markerIds.size(); i++) {
-        cv::solvePnP(objPoints, markerCorners.at(i), cameraMatrix, distCoeffs, rvecs[i], tvecs[i]);
     }
 
     // Print out pose estimation results
@@ -110,6 +141,15 @@ int main(int argc, char** argv ) {
         cv::namedWindow("Detected ArUco markers and pose", cv::WINDOW_NORMAL);
         cv::imshow("Detected ArUco markers and pose", InputImage);
         waitKey(0);
+    }
+
+    // Output timing information
+    if (OUTPUT_TIME) {
+        auto detection_duration = std::chrono::duration_cast<std::chrono::nanoseconds>(post_detection_time - pre_detection_time).count();
+        auto pose_duration = std::chrono::duration_cast<std::chrono::nanoseconds>(post_pose_time - pre_pose_time).count();
+        std::cout << "Marker Detection Time: " << detection_duration << " ns" << std::endl;
+        std::cout << "Pose Estimation Time: " << pose_duration << " ns" << std::endl;
+        std::cout << "Total Time: " << (detection_duration + pose_duration) << " ns" << std::endl;
     }
     
     return 0;
