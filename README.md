@@ -1,3 +1,8 @@
+# Program Overview
+This program detects ArUco markers in a given image and estimates their pose using OpenCV. It supports optional display of the detected markers, printing of marker IDs and pose data, and can measure and log the execution time for detection and pose estimation. Timing results can be printed to the console or saved to a CSV file for further analysis.
+
+It also features an utility program `calibrate_camera.cpp` that calculates the camera matrix and distortion coefficients given a set of chessboard images (OpenCV Calibration Pattern).
+
 # Prerequisites
 * Assummes the host has installed OpenCV 
     * Installing libopencv-dev using apt should be enough
