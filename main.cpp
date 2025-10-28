@@ -1,30 +1,52 @@
 #include <stdio.h>
+#include <unistd.h>
 #include <opencv2/opencv.hpp>
 #include <opencv2/aruco.hpp>
 
 #include "camera_parameters.h"
+
+void printHelp() {
+    std::cout << "Usage: ArUcoPoseEstimation.out [-f image_path] [-s] [-d]\n"
+              << "Options:\n"
+              << "  -h                Show this help message\n"
+              << "  -f image_path     Path to the input image\n"
+              << "  -s                Show image with detected markers and axes\n"
+              << "  -d                Print detected marker ids and pose data\n";
+}
 
 int main(int argc, char** argv ) {
     Mat InputImage;
     bool SHOW_IMAGE = false;
     bool PRINT_DATA = false;
 
-    if ( argc < 2 ) {
-        std::cout << "usage: ArUcoDetection.out <Image_Path> <Show_Image?> <Print_Data?>\n";
-        return -1;
-    }
+    /**************************************************************************************/
+    /************************************Parse Input***************************************/
+    /**************************************************************************************/
 
-    InputImage = imread( argv[1], 1 );
-    if ( !InputImage.data ) {
-        std::cout << "No image data \n";
-        return -1;
-    }
-
-    if (argc >= 3) {
-        SHOW_IMAGE = (std::string(argv[2]) == "true");
-    }
-    if (argc >= 4) {
-        PRINT_DATA = (std::string(argv[3]) == "true");
+    int opt;
+    while ((opt = getopt(argc, argv, "hf:sd")) != -1) {
+        switch (opt) {
+            case 'h':
+                printHelp();
+                return 0;
+            case 'f':
+                InputImage = imread(optarg, 1);
+                if (!InputImage.data) {
+                    std::cout << "No image data \n";
+                    return -1;
+                }
+                break;
+            case 's':
+                SHOW_IMAGE = true;
+                break;
+            case 'd':
+                PRINT_DATA = true;
+                break;
+            default:
+                std::cerr << "Unknown option\n";
+                printHelp();
+                return -1;
+        }
     }
 
     /**************************************************************************************/
