@@ -4,14 +4,12 @@
 
 #include "camera_parameters.h"
 
-int main(int argc, char** argv )
-{
+int main(int argc, char** argv ) {
     Mat InputImage;
     bool SHOW_IMAGE = false;
     bool PRINT_DATA = false;
 
-    if ( argc < 2 )
-    {
+    if ( argc < 2 ) {
         std::cout << "usage: ArUcoDetection.out <Image_Path> <Show_Image?> <Print_Data?>\n";
         return -1;
     }
