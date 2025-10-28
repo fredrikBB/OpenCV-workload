@@ -3,17 +3,20 @@
 #include <opencv2/opencv.hpp>
 #include <opencv2/aruco.hpp>
 #include <chrono>
+#include <iostream>
+#include <fstream>
 
 #include "camera_parameters.h"
 
 void printHelp() {
     std::cout << "Usage: ArUcoPoseEstimation.out [-f image_path] [-s] [-d]\n"
               << "Options:\n"
-              << "  -h                Show this help message\n"
-              << "  -f image_path     Path to the input image\n"
-              << "  -s                Show image with detected markers and axes\n"
-              << "  -d                Print detected marker ids and pose data\n"
-              << "  -t                Print detection and pose estimation time\n";
+              << "  -h                          Show this help message\n"
+              << "  -f image_path               Path to the input image\n"
+              << "  -s                          Show image with detected markers and axes\n"
+              << "  -d                          Print detected marker ids and pose data\n"
+              << "  -t                          Print detection and pose estimation time\n"
+              << "  -c csv_path                 Save timing information to CSV file at csv_path\n";
 }
 
 int main(int argc, char** argv ) {
@@ -22,6 +25,7 @@ int main(int argc, char** argv ) {
     bool SHOW_IMAGE = false;
     bool PRINT_DATA = false;
     bool OUTPUT_TIME = false;
+    std::string CSV_PATH;
 
     // Time points for performance measurement
     // Steady clock is monotonic and not affected by system clock changes
@@ -34,7 +38,7 @@ int main(int argc, char** argv ) {
     /**************************************************************************************/
 
     int opt;
-    while ((opt = getopt(argc, argv, "hf:sdt")) != -1) {
+    while ((opt = getopt(argc, argv, "hf:sdtc:")) != -1) {
         switch (opt) {
             case 'h':
                 printHelp();
@@ -54,6 +58,9 @@ int main(int argc, char** argv ) {
                 break;
             case 't':
                 OUTPUT_TIME = true;
+                break;
+            case 'c':
+                CSV_PATH = std::string(optarg);
                 break;
             default:
                 std::cerr << "Unknown option\n";
@@ -111,7 +118,7 @@ int main(int argc, char** argv ) {
     post_pose_time = std::chrono::steady_clock::now();
 
     /**************************************************************************************/
-    /************************************Print Results*************************************/
+    /************************************Output Results************************************/
     /**************************************************************************************/
 
     // Print out program data
@@ -150,22 +157,39 @@ int main(int argc, char** argv ) {
         waitKey(0);
     }
 
+    // Calculate timing durations
+    auto detection_duration = std::chrono::duration_cast<std::chrono::nanoseconds>(post_detection_time - pre_detection_time).count();
+    auto pose_duration = std::chrono::duration_cast<std::chrono::nanoseconds>(post_pose_time - pre_pose_time).count();
+    auto total_duration = detection_duration + pose_duration;
+
     // Output timing information
     if (OUTPUT_TIME) {
         // In nanoseconds
-        auto detection_duration = std::chrono::duration_cast<std::chrono::nanoseconds>(post_detection_time - pre_detection_time).count();
-        auto pose_duration = std::chrono::duration_cast<std::chrono::nanoseconds>(post_pose_time - pre_pose_time).count();
         std::cout << "Marker Detection Time: " << detection_duration << " ns" << std::endl;
         std::cout << "Pose Estimation Time: " << pose_duration << " ns" << std::endl;
-        std::cout << "Total Time: " << (detection_duration + pose_duration) << " ns" << std::endl;
+        std::cout << "Total Time: " << total_duration << " ns" << std::endl;
 
         std::cout << std::endl;
 
         // In milliseconds
         std::cout << "Marker Detection Time: " << detection_duration / 1e6 << " ms" << std::endl;
         std::cout << "Pose Estimation Time: " << pose_duration / 1e6 << " ms" << std::endl;
-        std::cout << "Total Time: " << (detection_duration + pose_duration) / 1e6 << " ms" << std::endl;
+        std::cout << "Total Time: " << total_duration / 1e6 << " ms" << std::endl;
     }
-    
+
+    // Write to CSV if path is provided
+    if (!CSV_PATH.empty()) {
+        std::ofstream csv_file;
+        csv_file.open(CSV_PATH, std::ios::out | std::ios::app);
+        if (csv_file.is_open()) {
+                csv_file << "Marker Detection Time (ns),Pose Estimation Time (ns),Total Time (ns)\n";
+                csv_file << detection_duration << "," << pose_duration << "," << total_duration << "\n";
+                csv_file.close();
+                std::cout << "Timing information written to " << CSV_PATH << std::endl;
+            } else {
+                std::cerr << "Error: Could not open file " << CSV_PATH << " for writing." << std::endl;
+            }
+    }
+
     return 0;
 }
