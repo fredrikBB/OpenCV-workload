@@ -114,14 +114,21 @@ int main(int argc, char** argv ) {
     /************************************Print Results*************************************/
     /**************************************************************************************/
 
-    // Print out detected marker ids sorted
+    // Print out program data
     if (PRINT_DATA) {
+        // Print out detected marker ids
         std::sort(markerIds.begin(), markerIds.end());
         std::cout << "Detected marker ids: ";
         for (auto i : markerIds)
             std::cout << i << " ";
         std::cout << std::endl;
         std::cout << "Number of detected markers: " << markerIds.size() << std::endl;
+
+        // Print out pose estimation results
+        for (size_t i = 0; i < markerIds.size(); i++) {
+            std::cout << "Rotation Vector: [" << rvecs[i][0] << ", " << rvecs[i][1] << ", " << rvecs[i][2] << "]" << std::endl;
+            std::cout << "Translation Vector: [" << tvecs[i][0] << ", " << tvecs[i][1] << ", " << tvecs[i][2] << "]" << std::endl;
+        }
     }
 
     // Print out pose estimation results
