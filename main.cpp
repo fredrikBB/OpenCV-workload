@@ -9,7 +9,7 @@
 #include "camera_parameters.h"
 
 void printHelp() {
-    std::cout << "Usage: ArUcoPoseEstimation.out [-f image_path] [-s] [-d]\n"
+    std::cout << "Usage: ArUcoPoseEstimation.out [options]\n"
               << "Options:\n"
               << "  -h                          Show this help message\n"
               << "  -f image_path               Path to the input image\n"
