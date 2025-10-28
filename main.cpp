@@ -152,11 +152,19 @@ int main(int argc, char** argv ) {
 
     // Output timing information
     if (OUTPUT_TIME) {
+        // In nanoseconds
         auto detection_duration = std::chrono::duration_cast<std::chrono::nanoseconds>(post_detection_time - pre_detection_time).count();
         auto pose_duration = std::chrono::duration_cast<std::chrono::nanoseconds>(post_pose_time - pre_pose_time).count();
         std::cout << "Marker Detection Time: " << detection_duration << " ns" << std::endl;
         std::cout << "Pose Estimation Time: " << pose_duration << " ns" << std::endl;
         std::cout << "Total Time: " << (detection_duration + pose_duration) << " ns" << std::endl;
+
+        std::cout << std::endl;
+
+        // In milliseconds
+        std::cout << "Marker Detection Time: " << detection_duration / 1e6 << " ms" << std::endl;
+        std::cout << "Pose Estimation Time: " << pose_duration / 1e6 << " ms" << std::endl;
+        std::cout << "Total Time: " << (detection_duration + pose_duration) / 1e6 << " ms" << std::endl;
     }
     
     return 0;
