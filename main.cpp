@@ -179,10 +179,20 @@ int main(int argc, char** argv ) {
 
     // Write to CSV if path is provided
     if (!CSV_PATH.empty()) {
+        // Check if we need to write the header
+        // We need to check if the file exists and if it's empty
+        bool write_header = false;
+        std::ifstream infile(CSV_PATH);
+        write_header = !infile.good() || infile.peek() == std::ifstream::traits_type::eof();
+        infile.close();
+
+        // Open the CSV file for writing
         std::ofstream csv_file;
         csv_file.open(CSV_PATH, std::ios::out | std::ios::app);
         if (csv_file.is_open()) {
-                csv_file << "Marker Detection Time (ns),Pose Estimation Time (ns),Total Time (ns)\n";
+                if (write_header) {
+                    csv_file << "Marker Detection Time (ns),Pose Estimation Time (ns),Total Time (ns)\n";
+                }
                 csv_file << detection_duration << "," << pose_duration << "," << total_duration << "\n";
                 csv_file.close();
                 std::cout << "Timing information written to " << CSV_PATH << std::endl;
